@@ -6,7 +6,15 @@ $(function(){
 
     var PageFlow = {}
 
-    rangy.init();
+    PageFlow.pagify = function(){
+      // set the canvas, make page, find first el to set
+      PageFlow.makeCanvas();
+      var page = PageFlow.makePage();
+      //find next child
+      var el = PageFlow.nextEl();
+      //copy and append if not overflowing
+      PageFlow.fillPage(page.data().pageNumber, el);
+    }
 
     //capture content source
     PageFlow.contentSource = $('[data-flow="source"]');
@@ -30,7 +38,8 @@ $(function(){
       width: 300
     }
 
-    PageFlow.makePageContainer = function(){
+    PageFlow.makeCanvas = function(){
+      //makes backdrop etc..
       if ($('[data-behavior=page-container]').length == 0){
         var pageContainer = $('<div>')
           .addClass('page-container')
@@ -50,9 +59,10 @@ $(function(){
       PageFlow.pageAttributes.width  = pageContainer.height() * (2/3)
     }
 
-    PageFlow.makePageTemplate = function(){
+    PageFlow.makePage = function(){
+      // 
       var pageCount = $('[data-behavior=page]').length
-       return $('<div>')
+      var template = $('<div>')
         .addClass('page')
         .css({
           height: PageFlow.pageAttributes.height,
@@ -61,53 +71,56 @@ $(function(){
           padding: '20px'
         })
         .attr({'data-behavior': 'page', 'data-page-number': (pageCount + 1) })
-        .appendTo($('[data-behavior=page-container]'));
+      $('[data-behavior=page-container]').append(template);
+      return template;
     }
 
     // keeps track of where we are in the index
     PageFlow.contentIndexLocation = 0
 
-    PageFlow.fillPages = function(){
-        var self = this;
-        var page = $('[data-behavior=page]').first();
-        //find next child
-        var el = PageFlow.contentIndex[PageFlow.contentIndexLocation];
-        //copy and append if not overflowing
-        PageFlow.fillPage(page, el);
+    PageFlow.nextEl = function(){
+      return  PageFlow.contentIndex[PageFlow.contentIndexLocation];
     }
-       
-      //save appended locatin of content index
-    PageFlow.fillPage = function(page, el){
-        var pageHeight = page.innerHeight();
-        // how tall is the new page with appended el?
-        if ($(page).children().length){
-          var availableSpace = page.innerHeight - $(page).children().height();
-        } 
-        else{
-          var availableSpace = pageHeight
-        }
 
-        if (availableSpace){
-          PageFlow.appendContent(el, page)
+    //save appended locatin of content index
+    PageFlow.fillPage = function(pageId, el){
+        var self = this;
+        self.page = $('[data-page-number='+ pageId +']')
+        self.pageHeight = self.page.innerHeight();
+        // how tall is the new page with appended el?
+        function availableSpace(){
+          if ($(self.page).children().length){
+            var totalHeight = 0;
+            self.page.children().each(function(){
+                totalHeight = totalHeight + $(this).outerHeight(true);
+            });
+            return self.page.innerHeight() - totalHeight;
+          } 
+          else{
+            return self.pageHeight;
+          }
+        }
+        PageFlow.appendContent(el, self.page)
+        if (availableSpace() > 0 ){
           if (el.textContent){          
-            var fittedElement = PageFlow.fitTextElement(el, availableSpace);
-            console.log(fittedElement);
+            var fittedElement = PageFlow.fitTextElement(el, availableSpace());
             $(el).html(fittedElement.content)
             if (fittedElement.overflow.length) {
               // make a new page
-              var page = PageFlow.makePageTemplate();
+              var page = PageFlow.makePage();
               // make copy of parent el and insert overflow
               var overflow = $(el).clone()
-              PageFlow.fillPage(page, overflow.html(fittedElement.overflow))
+              PageFlow.fillPage(pageId, overflow.html(fittedElement.overflow))
             }
             else{
               PageFlow.contentIndexLocation++
+              PageFlow.fillPage(pageId, PageFlow.nextEl());
             }
           }
         }
         else{
-          var page = PageFlow.makePageTemplate();
-          console.log('success!')
+          console.log('no more space! make new page')
+          self.page = PageFlow.makePage();
         }
       }
 
@@ -117,28 +130,18 @@ $(function(){
 
     PageFlow.fitTextElement = function(el, availableSpace){
       //how many lines will fit
-
-      this.lineCount = (el.textContent.match(/\n/g)||[]).length;
-      var elHeight = el.offsetHeight
-      var lineHeight = elHeight / this.lineCount;
-      var linesThatFit = Math.floor(availableSpace / lineHeight);
-      var splitLines = $(el.textContent.split(/\n/g)||[]);
-      console.log('slice length '+[].slice.call(splitLines, 0, linesThatFit).length)
-      console.log(
-        'availableSpace: ' + availableSpace + '\n' +
-        'linecount: ' + this.lineCount + '\n' +
-        'element height: ' + elHeight + '\n' +
-        'lines to keep: ' + linesThatFit + '\n' + 
-        'line array: ' + linesThatFit + '\n' + 
-        'line height * lines: ' + (lineHeight * this.lineCount) + '\n' + 
-        ''
-      )
-      var content = [].slice.call(splitLines, 0, linesThatFit).join('\n');
-      var overflow = [].slice.call(splitLines, linesThatFit, splitLines.length).join('\n');
-      return {
-        content: content,
-        overflow: overflow
-      }
+      var ftdEl = {};
+      ftdEl.availableSpace = availableSpace;
+      ftdEl.text = el.textContent;
+      ftdEl.lineCount = (el.textContent.match(/\n/g)||[]).length;
+      ftdEl.elHeight = el.offsetHeight;
+      ftdEl.lineHeight = ftdEl.elHeight / ftdEl.lineCount;
+      ftdEl.linesThatFit = Math.floor(availableSpace / ftdEl.lineHeight);
+      ftdEl.splitLines = $(el.textContent.split(/\n/g)||[]);
+      ftdEl.content = [].slice.call(ftdEl.splitLines, 0, ftdEl.linesThatFit).join('\n');
+      ftdEl.overflow = [].slice.call(ftdEl.splitLines, ftdEl.linesThatFit, ftdEl.splitLines.length).join('\n');
+      console.log(ftdEl)
+      return ftdEl;
     }
 
     // return PageFlow objy
