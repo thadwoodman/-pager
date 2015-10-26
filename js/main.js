@@ -89,11 +89,9 @@ $(function(){
 
         if (availableSpace){
           PageFlow.appendContent(el, page)
-          if (page.data().pageNumber == 2){
-            debugger
-          }
           if (el.textContent){          
             var fittedElement = PageFlow.fitTextElement(el, availableSpace);
+            console.log(fittedElement);
             $(el).html(fittedElement.content)
             if (fittedElement.overflow.length) {
               // make a new page
@@ -108,6 +106,7 @@ $(function(){
           }
         }
         else{
+          var page = PageFlow.makePageTemplate();
           console.log('success!')
         }
       }
@@ -117,28 +116,23 @@ $(function(){
     } 
 
     PageFlow.fitTextElement = function(el, availableSpace){
-      if (el.textContent){
-        var text = el.textContent;
-      }
-      else if (el.text !== undefined){
-        var text = el.text();
-      }
-      // console.log(
-      //   'page number: ' + page.data().pageNumber + '\n' +
-      //   'availableSpace: ' + availableSpace + '\n' +
-      //   'page height: ' + pageHeight + '\n' +
-      //   'lines to keep: ' + lines + '\n' + 
-      //   'line height: ' + lineHeight + '\n' + 
-      //   'line height * lines: ' + (lineHeight * lines) + '\n' + 
-      //   ''
-      // )
-      // how many lines will fit
-      var lineCount = (el.textContent.match(/\n/g)||[]).length;
+      //how many lines will fit
+
+      this.lineCount = (el.textContent.match(/\n/g)||[]).length;
       var elHeight = el.offsetHeight
-      var lineHeight = elHeight / lineCount;
+      var lineHeight = elHeight / this.lineCount;
       var linesThatFit = Math.floor(availableSpace / lineHeight);
       var splitLines = $(el.textContent.split(/\n/g)||[]);
       console.log('slice length '+[].slice.call(splitLines, 0, linesThatFit).length)
+      console.log(
+        'availableSpace: ' + availableSpace + '\n' +
+        'linecount: ' + this.lineCount + '\n' +
+        'element height: ' + elHeight + '\n' +
+        'lines to keep: ' + linesThatFit + '\n' + 
+        'line array: ' + linesThatFit + '\n' + 
+        'line height * lines: ' + (lineHeight * this.lineCount) + '\n' + 
+        ''
+      )
       var content = [].slice.call(splitLines, 0, linesThatFit).join('\n');
       var overflow = [].slice.call(splitLines, linesThatFit, splitLines.length).join('\n');
       return {
